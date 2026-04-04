@@ -1,17 +1,14 @@
 # rag/ingestor.py
 # ─────────────────────────────────────────────────────────────────
-# Handles loading documents from disk and splitting them
-# into chunks that can be embedded into the vector store.
-#
-# Flow: raw file → Document objects → chunked Documents
+# Fix: langchain.text_splitter moved to langchain_text_splitters
+# Fix: langchain_community.document_loaders replaces langchain loaders
 # ─────────────────────────────────────────────────────────────────
 
 from pathlib import Path
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter  # ← FIXED
 from langchain_community.document_loaders import (
-    PyPDFLoader,       # For PDF files
-    TextLoader,        # For .txt / .md files
-    DirectoryLoader,   # Loads all files in a folder
+    PyPDFLoader,
+    TextLoader,
 )
 from config.settings import CHUNK_SIZE, CHUNK_OVERLAP
 
@@ -20,22 +17,26 @@ def load_documents(data_path: str = "./data/raw") -> list:
     """
     Load all documents from the raw data folder.
     Returns a list of LangChain Document objects.
-    Each Document has: page_content (str) + metadata (dict).
     """
     path = Path(data_path)
     docs = []
 
-    # Walk through all files in the data directory
-    for file in path.glob("**/*"):
-        if file.suffix == ".pdf":
-            # PyPDFLoader splits a PDF into one Document per page
-            loader = PyPDFLoader(str(file))
-            docs.extend(loader.load())
+    if not path.exists():
+        print(f"[Ingestor] Data path {data_path} does not exist — skipping.")
+        return docs
 
-        elif file.suffix in [".txt", ".md"]:
-            # TextLoader loads the entire file as one Document
-            loader = TextLoader(str(file), encoding="utf-8")
-            docs.extend(loader.load())
+    for file in path.glob("**/*"):
+        try:
+            if file.suffix == ".pdf":
+                loader = PyPDFLoader(str(file))
+                docs.extend(loader.load())
+
+            elif file.suffix in [".txt", ".md"]:
+                loader = TextLoader(str(file), encoding="utf-8")
+                docs.extend(loader.load())
+
+        except Exception as e:
+            print(f"[Ingestor] Skipping {file.name}: {e}")
 
     print(f"[Ingestor] Loaded {len(docs)} document pages from {data_path}")
     return docs
@@ -43,16 +44,15 @@ def load_documents(data_path: str = "./data/raw") -> list:
 
 def chunk_documents(docs: list) -> list:
     """
-    Split large documents into smaller overlapping chunks.
-    Why overlap? So context at chunk boundaries isn't lost.
-
-    CHUNK_SIZE    = max characters per chunk (from .env)
-    CHUNK_OVERLAP = characters shared between adjacent chunks
+    Split documents into smaller overlapping chunks for embedding.
     """
+    if not docs:
+        print("[Ingestor] No documents to chunk.")
+        return []
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP,
-        # Try splitting on paragraphs first, then sentences, then words
         separators=["\n\n", "\n", " ", ""]
     )
 
