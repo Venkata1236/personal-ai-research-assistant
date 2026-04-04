@@ -1,9 +1,8 @@
 # graph/nodes.py
 # ─────────────────────────────────────────────────────────────────
-# Each function here is one NODE in the LangGraph StateGraph.
-# A node receives the current AgentState, does its work,
-# and returns a dict of updated state fields.
-# LangGraph merges the returned dict back into the state.
+# Fix: CrewOutput object must be converted to str before
+# passing between LangGraph nodes. CrewAI only accepts
+# str, int, float, bool, dict, list as interpolation inputs.
 # ─────────────────────────────────────────────────────────────────
 
 from graph.state import AgentState
@@ -11,82 +10,68 @@ from crew import ResearchCrew
 
 
 def plan_node(state: AgentState) -> dict:
-    """
-    Node 1: Planner
-    Input : state["topic"]
-    Output: state["plan"] — list of sub-questions
-    """
-    print(f"\n[Node: Planner] Planning research for: {state['topic']}")
+    """Node 1 — Planner: breaks topic into sub-questions."""
+    print(f"\n[Node: Planner] Planning for: {state['topic']}")
 
-    # Kick off only the planner task from the crew
     crew = ResearchCrew()
-    plan = crew.run_task("plan_task", inputs={"topic": state["topic"]})
+    result = crew.run_task("plan_task", inputs={"topic": state["topic"]})
 
-    # Return only the fields we want to update
-    return {"plan": plan}
+    # ← Convert CrewOutput → str before storing in state
+    return {"plan": str(result)}
 
 
 def research_node(state: AgentState) -> dict:
-    """
-    Node 2: Researcher
-    Input : state["topic"] + state["plan"]
-    Output: state["research"] — raw findings + sources
-    """
+    """Node 2 — Researcher: web search + RAG retrieval."""
     print(f"\n[Node: Researcher] Researching: {state['topic']}")
 
     crew = ResearchCrew()
-    research = crew.run_task(
+    result = crew.run_task(
         "research_task",
-        inputs={"topic": state["topic"], "plan": state["plan"]}
+        inputs={
+            "topic": state["topic"],
+            "plan":  str(state.get("plan", ""))   # ← ensure str
+        }
     )
 
-    return {"research": research}
+    return {"research": str(result)}              # ← Convert to str
 
 
 def write_node(state: AgentState) -> dict:
-    """
-    Node 3: Writer
-    Input : state["research"]
-    Output: state["report"] — structured draft report
-    """
+    """Node 3 — Writer: structures findings into report."""
     print(f"\n[Node: Writer] Writing report...")
 
     crew = ResearchCrew()
-    report = crew.run_task(
+    result = crew.run_task(
         "write_task",
-        inputs={"topic": state["topic"], "research": state["research"]}
+        inputs={
+            "topic":    state["topic"],
+            "research": str(state.get("research", ""))  # ← ensure str
+        }
     )
 
-    return {"report": report}
+    return {"report": str(result)}                # ← Convert to str
 
 
 def critic_node(state: AgentState) -> dict:
-    """
-    Node 4: Critic
-    Input : state["report"]
-    Output: state["final_output"] — reviewed, polished report
-    """
+    """Node 4 — Critic: reviews and polishes final report."""
     print(f"\n[Node: Critic] Reviewing report...")
 
     crew = ResearchCrew()
-    final = crew.run_task(
+    result = crew.run_task(
         "critic_task",
-        inputs={"topic": state["topic"], "report": state["report"]}
+        inputs={
+            "topic":  state["topic"],
+            "report": str(state.get("report", ""))      # ← ensure str
+        }
     )
 
-    return {"final_output": final}
+    return {"final_output": str(result)}          # ← Convert to str
 
 
 def should_continue(state: AgentState) -> str:
-    """
-    Conditional edge function — LangGraph calls this to decide
-    which node to go to next.
-
-    Returns "end"   if there's an error or final output is ready
-    Returns "write" if research is done but report isn't written yet
-    """
+    """Conditional edge — decides next node."""
     if state.get("error"):
-        return "end"       # Something went wrong — stop the graph
+        return "end"
     if state.get("research") and not state.get("report"):
-        return "write"     # Research done — go write the report
+        return "write"
     return "end"
