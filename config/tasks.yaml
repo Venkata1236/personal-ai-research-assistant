@@ -1,0 +1,49 @@
+# config/tasks.yaml
+# ─────────────────────────────────────────────────────────────────
+# Defines WHAT each agent does — their task, expected output,
+# which agent owns it, and what context they receive.
+#
+# "context: [research_task]" means the writer receives the
+# researcher's output automatically before writing.
+# ─────────────────────────────────────────────────────────────────
+
+plan_task:
+  description: >
+    Analyze the topic: {topic}
+    Break it into 3-5 focused research sub-questions.
+    Return a numbered list of questions to investigate.
+  expected_output: >
+    A numbered list of 3-5 focused research questions about {topic}.
+  agent: planner
+
+research_task:
+  description: >
+    Research {topic} by answering the planned sub-questions.
+    Use web search and RAG document retrieval tools.
+    Collect facts, statistics, and source URLs.
+  expected_output: >
+    A bullet-point list of 5-8 key findings with source URLs.
+  agent: researcher
+  context:
+    - plan_task       # researcher receives the plan before starting
+
+write_task:
+  description: >
+    Using the research findings, write a structured report about {topic}.
+    Format: Introduction (1 para) → Key Findings (bullets) → Conclusion (1 para).
+  expected_output: >
+    A complete 3-section report: Introduction, Key Findings, Conclusion.
+  agent: writer
+  context:
+    - research_task   # writer receives researcher output as context
+
+critic_task:
+  description: >
+    Review the written report about {topic}.
+    Check for: unsupported claims, missing info, unclear writing.
+    Return the improved final version.
+  expected_output: >
+    A polished, fact-checked final report ready for publication.
+  agent: critic
+  context:
+    - write_task      # critic receives the draft report
