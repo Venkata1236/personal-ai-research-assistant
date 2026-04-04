@@ -1,11 +1,12 @@
 # tools/summarizer.py
 # ─────────────────────────────────────────────────────────────────
-# Fix: BaseTool now imports from 'crewai.tools' not 'crewai_tools'
+# Fix: langchain.schema moved to langchain_core.messages
+# in newer LangChain versions
 # ─────────────────────────────────────────────────────────────────
 
-from crewai.tools import BaseTool          # ← FIXED import
+from crewai.tools import BaseTool
 from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage
+from langchain_core.messages import HumanMessage    # ← FIXED import
 from config.settings import OPENAI_API_KEY, OPENAI_MODEL_NAME
 
 
