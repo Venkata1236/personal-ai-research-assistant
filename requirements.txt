@@ -1,0 +1,28 @@
+# ── Core AI Frameworks ──────────────────────────────
+crewai
+crewai-tools
+langgraph
+langchain
+langchain-openai
+langchain-community
+
+# ── RAG / Vector Store ───────────────────────────────
+faiss-cpu
+chromadb
+tiktoken
+sentence-transformers
+
+# ── Document Loading ─────────────────────────────────
+pypdf
+unstructured
+
+# ── Web Search Tool ──────────────────────────────────
+tavily-python
+
+# ── Environment & Config ─────────────────────────────
+python-dotenv
+
+# ── Utilities ────────────────────────────────────────
+pydantic
+rich
+streamlit
